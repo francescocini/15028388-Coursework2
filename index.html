@@ -12,6 +12,9 @@
 <body>
 
 <script>
+var chosenItems = [];
+var oldShoppingList = [];
+var firstPressed = true;
 
 function gotoQuantity(obj)
 {
@@ -22,8 +25,74 @@ function gotoQuantity(obj)
 
 function addtolist()
 {
+	$.mobile.changePage("#page1");
+	vegetablechosen = $("#vegname").text();
+	quantitychosen = $("#spin").val();
+	$("#spin").val(0);
 	
+	//Reomve Enters and Newlines from String cause because of h1 or h2
+	vegetablechosen = vegetablechosen.replace(/\r?\n|\r/g,'');
+	vegetablechosen = vegetablechosen.replace(/ /g,'');
+	
+	var item = 
+	{
+		VegetableName: vegetablechosen,
+		Quantity: quantitychosen
+	};	
+	
+	chosenItems.push(item);
+	
+	oldShoppingList = chosenItems;
+	localStorage.setItem('shoppinglist', JSON.stringify(chosenItems));
 }
+
+function showlist()
+{
+	if(oldShoppingList.length == 0)
+	{
+		oldShoppingList = localStorage.getItem('shoppinglist');
+	}
+	
+	var shoppinglist = localStorage.getItem('shoppinglist');
+	
+	if(firstPressed == true)
+	{
+		var allVegetablesInShoppingList = JSON.parse(shoppinglist);
+		
+		for (var key = 0; key < allVegetablesInShoppingList.length; key++)
+		{
+			$('<li>').append('<h1>' + allVegetablesInShoppingList[key].VegetableName + '</h1> Quantity: ' + allVegetablesInShoppingList[key].Quantity).appendTo('#finalshoppinglist');
+		}
+		
+		$.mobile.changePage("#page4");
+		output = "";
+	}
+	else if(shoppinglist && shoppinglist != oldShoppingList)
+	{
+		var allVegetablesInShoppingList = JSON.parse(shoppinglist);
+		
+		for (var key = 0; key < allVegetablesInShoppingList.length; key++)
+		{
+			$('<li>').append('<h1>' + allVegetablesInShoppingList[key].VegetableName + '</h1> Quantity: ' + allVegetablesInShoppingList[key].Quantity + '<button>  </button>').appendTo('#finalshoppinglist') ;
+		}
+		
+		$.mobile.changePage("#page4");
+		output = "";
+	}
+	else if(shoppinglist && shoppinglist == oldShoppingList)
+	{
+		$.mobile.changePage("#page4");
+		output = "";
+	}	
+	else
+	{
+		alert('There are no items in the shopping list');	
+	}
+	
+	firstPressed = false;
+	//$("#allfoodchosen").html(output);
+}
+
 
 </script>
 
@@ -88,7 +157,7 @@ function addtolist()
   <footer data-role="footer" data-position="fixed" data-theme="b">
     <nav data-role="navbar">
       <ul>
-        <li><a href="#page4" data-icon="grid"> Shopping List</a></li>
+        <li><a data-icon="grid" onclick="showlist()"> Shopping List</a></li>
         <li><a href="#page3" data-icon="info"> Info</a></li>
       </ul>
     </nav>
@@ -112,12 +181,13 @@ function addtolist()
 </div>
 
 <button onclick="addtolist()"> Add to list </button>
+
   
   <footer data-role="footer" data-position="fixed" data-theme="b">
     <nav data-role="navbar">
       <ul>
         <li><a href="#page1" data-icon="home"> Home </a></li>
-        <li><a href="#page4" data-icon="grid"> Shopping List</a></li>
+        <li><a data-icon="grid" onclick="showlist()"> Shopping List</a></li>
         <li><a href="#page3" data-icon="info"> Info</a></li>
       </ul>
     </nav>
@@ -148,7 +218,7 @@ function addtolist()
     <nav data-role="navbar">
       <ul>
         <li><a href="#page1" data-icon="home"> Home </a></li>
-        <li><a href="#page4" data-icon="grid"> Shopping List</a></li>
+        <li><a data-icon="grid" onclick="showlist()"> Shopping List</a></li>
       </ul>
     </nav>
   </footer>
@@ -160,7 +230,15 @@ function addtolist()
   <header data-role="header" data-theme="b">
     <h1> Shopping List </h1>
   </header>
-  <article data-role="content"> </article>
+  
+  <div id="allfoodchosen"> 
+  
+  <article data-role="content">
+  <ul id="finalshoppinglist" data-role="listview" data-filter="true" data-autodividers="true" data-inset="true"> 
+  </ul>
+  </article>
+  </div>
+  
   <footer data-role="footer" data-position="fixed" data-theme="b">
     <nav data-role="navbar">
       <ul>
