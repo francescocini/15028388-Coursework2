@@ -13,8 +13,7 @@
 
 <script>
 var chosenItems = [];
-var oldShoppingList = [];
-var firstPressed = true;
+
 
 function gotoQuantity(obj)
 {
@@ -22,6 +21,20 @@ function gotoQuantity(obj)
 	vegetableschosen = $(obj).text();
 	$("#vegname").text(vegetableschosen);
 }
+
+function itemClicked(obj)
+{
+	if($(obj).css('text-decoration').valueOf() != 'line-through')
+	{
+		$(obj).css('text-decoration', 'line-through')
+	}
+	else
+	{
+		$(obj).css('text-decoration', 'none')
+	}
+}
+
+var change = false;
 
 function addtolist()
 {
@@ -41,49 +54,76 @@ function addtolist()
 	};	
 	
 	chosenItems.push(item);
-	
-	oldShoppingList = chosenItems;
 	localStorage.setItem('shoppinglist', JSON.stringify(chosenItems));
+	change = true;
 }
 
-function showlist()
+function deleteItem(obj)
 {
-	if(oldShoppingList.length == 0)
+	try
 	{
-		oldShoppingList = localStorage.getItem('shoppinglist');
+		obj.parentElement.style.display = "none";
+		var shoppinglist = JSON.parse(localStorage.getItem('shoppinglist'));
+		var newShoppingList = [];
+		
+		var vegetablepressed = $(obj.parentElement).children('h1').text();
+		var quantityofvegetable = ($(obj.parentElement).children('h4').text()).slice(10);
+		
+		for (var key = 0; key < shoppinglist.length; key++)
+		{
+			if(shoppinglist[key].VegetableName != vegetablepressed && shoppinglist[key].Quantity != quantityofvegetable)
+			newShoppingList.push(shoppinglist[key]);
+		}
+		
+		localStorage.setItem('shoppinglist', JSON.stringify(newShoppingList));
 	}
-	
+	catch(err)
+	{
+		alert(err);
+	}
+}
+
+var firstRun = true;
+function showlist()
+{	
 	var shoppinglist = localStorage.getItem('shoppinglist');
 	
-	if(firstPressed == true)
+	if(firstRun && !change && shoppinglist)
 	{
 		var allVegetablesInShoppingList = JSON.parse(shoppinglist);
+
+		for (var key = 0; key < allVegetablesInShoppingList.length; key++)
+		{
+			$('<li onclick="itemClicked(this)">').append(
+				'<h1>' + allVegetablesInShoppingList[key].VegetableName + '</h1></a>' 
+				+ '<h4>Quantity: ' + allVegetablesInShoppingList[key].Quantity 
+				+ '</h4><button onclick="deleteItem(this)"> Delete </button>').appendTo('#finalshoppinglist');
+		}
+				
+		$.mobile.changePage("#page4");
+		output = "";
 		
+		firstRun = false;
+	}
+	else if(!firstRun && shoppinglist && change)
+	{
+		var allVegetablesInShoppingList = JSON.parse(shoppinglist);
+
 		for (var key = 0; key < allVegetablesInShoppingList.length; key++)
 		{
 			$('<li>').append('<h1>' + allVegetablesInShoppingList[key].VegetableName + '</h1> Quantity: ' + allVegetablesInShoppingList[key].Quantity).appendTo('#finalshoppinglist');
 		}
-		
+				
 		$.mobile.changePage("#page4");
 		output = "";
-	}
-	else if(shoppinglist && shoppinglist != oldShoppingList)
-	{
-		var allVegetablesInShoppingList = JSON.parse(shoppinglist);
 		
-		for (var key = 0; key < allVegetablesInShoppingList.length; key++)
-		{
-			$('<li>').append('<h1>' + allVegetablesInShoppingList[key].VegetableName + '</h1> Quantity: ' + allVegetablesInShoppingList[key].Quantity + '<button>  </button>').appendTo('#finalshoppinglist') ;
-		}
-		
-		$.mobile.changePage("#page4");
-		output = "";
+		change = false;
 	}
-	else if(shoppinglist && shoppinglist == oldShoppingList)
+	else if(!firstRun && shoppinglist && !change)
 	{
 		$.mobile.changePage("#page4");
 		output = "";
-	}	
+	}
 	else
 	{
 		alert('There are no items in the shopping list');	
