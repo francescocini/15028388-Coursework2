@@ -9,17 +9,30 @@
 <script type="text/javascript" src="http://dev.jtsage.com/cdn/spinbox/latest/jqm-spinbox.min.js"></script>
 <meta name="viewport" content="width=decice-width, initial-scale=1, maximum-scale=1" />
 </head>
+
 <body>
+
+
 
 <script>
 var chosenItems = [];
-
 
 function gotoQuantity(obj)
 {
 	$.mobile.changePage("#page2");
 	vegetableschosen = $(obj).text();
 	$("#vegname").text(vegetableschosen);
+	
+	vegetableschosen = vegetableschosen.replace(/\r?\n|\r/g,'');
+	vegetableschosen = vegetableschosen.replace(/ /g,'');
+	
+	//http://stackoverflow.com/questions/9698675/add-image-source-in-jquery
+	var imagesrc = 'Images/' +vegetableschosen+ '.jpg';
+	
+	//set the attributes of vegimage
+	$("#vegimage").attr("src", imagesrc);
+	$("#vegimage").attr("width", 200);
+	$("#vegimage").attr("height", 100);
 }
 
 function itemClicked(obj)
@@ -38,7 +51,13 @@ var change = false;
 
 function addtolist()
 {
-	$.mobile.changePage("#page1");
+	var shoppinglist = JSON.parse(localStorage.getItem('shoppinglist'));
+
+	if(shoppinglist)
+	{
+		chosenItems = shoppinglist;
+	}
+
 	vegetablechosen = $("#vegname").text();
 	quantitychosen = $("#spin").val();
 	$("#spin").val(0);
@@ -47,15 +66,51 @@ function addtolist()
 	vegetablechosen = vegetablechosen.replace(/\r?\n|\r/g,'');
 	vegetablechosen = vegetablechosen.replace(/ /g,'');
 	
-	var item = 
-	{
-		VegetableName: vegetablechosen,
-		Quantity: quantitychosen
-	};	
 	
-	chosenItems.push(item);
+	//This method has been created so that when the same item is added it increases the quantity of the item rather than creating
+	//another instance
+	
+	var itemFound = false;
+	
+	if(shoppinglist)
+	{
+		for (var i=0; i<shoppinglist.length; i++)
+		{
+			if(shoppinglist[i].VegetableName == vegetablechosen)
+			{
+				itemFound = true;
+				
+				//get quantity of vegetable in shopping list
+				var quantityBefore = parseInt(shoppinglist[i].Quantity);
+				
+				//get quantity of vegetable chosen				
+				var quantityToAdd = parseInt(quantitychosen);	
+				
+				//add quantities together
+				shoppinglist[i].Quantity = (quantityBefore + quantityToAdd).toString();	
+			}
+		}
+	}	
+	
+	if(!itemFound)
+	{
+		//create a new item to store in the shopping list on localstorage
+		var item = 
+		{
+			VegetableName: vegetablechosen,
+			Quantity: quantitychosen
+		};	
+		
+		chosenItems.push(item);
+	}
+	
+	//save vegetable to local storage
 	localStorage.setItem('shoppinglist', JSON.stringify(chosenItems));
 	change = true;
+	firstRun = false;
+	
+	$.mobile.changePage("#page1");
+	location.reload();
 }
 
 function deleteItem(obj)
@@ -63,19 +118,26 @@ function deleteItem(obj)
 	try
 	{
 		obj.parentElement.style.display = "none";
+		
 		var shoppinglist = JSON.parse(localStorage.getItem('shoppinglist'));
 		var newShoppingList = [];
 		
 		var vegetablepressed = $(obj.parentElement).children('h1').text();
-		var quantityofvegetable = ($(obj.parentElement).children('h4').text()).slice(10);
 		
 		for (var key = 0; key < shoppinglist.length; key++)
 		{
-			if(shoppinglist[key].VegetableName != vegetablepressed && shoppinglist[key].Quantity != quantityofvegetable)
+			if(shoppinglist[key].VegetableName != vegetablepressed)
 			newShoppingList.push(shoppinglist[key]);
 		}
 		
-		localStorage.setItem('shoppinglist', JSON.stringify(newShoppingList));
+		if (newShoppingList.length == 0)
+		{
+			localStorage.clear()
+		}
+		else
+		{
+			localStorage.setItem('shoppinglist', JSON.stringify(newShoppingList));	
+		}
 	}
 	catch(err)
 	{
@@ -84,20 +146,28 @@ function deleteItem(obj)
 }
 
 var firstRun = true;
+
 function showlist()
 {	
 	var shoppinglist = localStorage.getItem('shoppinglist');
 	
+	//check if the shopping list button has been pressed for the first since launch
+	//check if there has been a change in the shoppinglist
+	
+	//first run fills the list, if no change is present do not refill list. If a change is present, the boolean is changed to true
+	// and list will be refilled
+	
+	//first run was added since everytime the shoppping list was clicked, the items in the list were being re added
 	if(firstRun && !change && shoppinglist)
 	{
 		var allVegetablesInShoppingList = JSON.parse(shoppinglist);
 
 		for (var key = 0; key < allVegetablesInShoppingList.length; key++)
 		{
-			$('<li onclick="itemClicked(this)">').append(
-				'<h1>' + allVegetablesInShoppingList[key].VegetableName + '</h1></a>' 
+			$('#finalshoppinglist').append(
+				'<li onclick="itemClicked(this)"><h1>' + allVegetablesInShoppingList[key].VegetableName + '</h1></a>' 
 				+ '<h4>Quantity: ' + allVegetablesInShoppingList[key].Quantity 
-				+ '</h4><button onclick="deleteItem(this)"> Delete </button>').appendTo('#finalshoppinglist');
+				+ '</h4><button onclick="deleteItem(this)"> Delete </button></li>');
 		}
 				
 		$.mobile.changePage("#page4");
@@ -105,13 +175,18 @@ function showlist()
 		
 		firstRun = false;
 	}
-	else if(!firstRun && shoppinglist && change)
+	else if(!firstRun && change && shoppinglist)
 	{
 		var allVegetablesInShoppingList = JSON.parse(shoppinglist);
-
+		
+		$('#finalshoppinglist').empty();
+		
 		for (var key = 0; key < allVegetablesInShoppingList.length; key++)
 		{
-			$('<li>').append('<h1>' + allVegetablesInShoppingList[key].VegetableName + '</h1> Quantity: ' + allVegetablesInShoppingList[key].Quantity).appendTo('#finalshoppinglist');
+			$('#finalshoppinglist').append(
+				'<li onclick="itemClicked(this)"><h1>' + allVegetablesInShoppingList[key].VegetableName + '</h1></a>' 
+				+ '<h4>Quantity: ' + allVegetablesInShoppingList[key].Quantity 
+				+ '</h4><button onclick="deleteItem(this)"> Delete </button></li>');
 		}
 				
 		$.mobile.changePage("#page4");
@@ -119,7 +194,7 @@ function showlist()
 		
 		change = false;
 	}
-	else if(!firstRun && shoppinglist && !change)
+	else if(!firstRun && !change && shoppinglist)
 	{
 		$.mobile.changePage("#page4");
 		output = "";
@@ -155,43 +230,43 @@ function showlist()
         <img src="Images/avocados.jpg" height="50" width="100" alt="Avocados" /> </a> </li>
       <li> <a onclick="gotoQuantity(this)">
         <h1>Banana </h1>
-        <img src="Images/bananas.jpg" height="50" width="100" alt="Banana" /> </a> </li>
+        <img src="Images/banana.jpg" height="50" width="100" alt="Banana" /> </a> </li>
       <li> <a onclick="gotoQuantity(this)">
         <h1>Bacon </h1>
-        <img src="Images/bacon_meat.jpg" height="50" width="100" alt="Bacon" /> </a> </li>
+        <img src="Images/bacon.jpg" height="50" width="100" alt="Bacon" /> </a> </li>
       <li> <a onclick="gotoQuantity(this)">
-        <h1>Brown Rice</h1>
-        <img src="Images/brown-rice_pasta.jpg" height="50" width="100" alt="Brown Rice" /> </a> </li>
+        <h1>Brown-Rice</h1>
+        <img src="Images/brown-rice.jpg" height="50" width="100" alt="Brown Rice" /> </a> </li>
       <li> <a onclick="gotoQuantity(this)">
         <h1>Cherries </h1>
         <img src="Images/cherries.jpg" height="50" width="100" alt="Cherries" /> </a> </li>
       <li> <a onclick="gotoQuantity(this)">
         <h1>Chicken </h1>
-        <img src="Images/chicken_meat.jpg" height="50" width="100" alt="Chicken" /> </a> </li>
+        <img src="Images/chicken.jpg" height="50" width="100" alt="Chicken" /> </a> </li>
       <li> <a onclick="gotoQuantity(this)">
         <h1>Cheese</h1>
-        <img src="Images/cheese_dairy.jpg" height="50" width="100" alt="Cheese" /> </a> </li>
+        <img src="Images/cheese.jpg" height="50" width="100" alt="Cheese" /> </a> </li>
       <li> <a onclick="gotoQuantity(this)">
         <h1>Detergents</h1>
-        <img src="Images/detergents_toiletries.jpg" height="50" width="100" alt="Detergents" /> </a> </li>
+        <img src="Images/detergents.jpg" height="50" width="100" alt="Detergents" /> </a> </li>
       <li> <a onclick="gotoQuantity(this)">
         <h1>Kiwi </h1>
         <img src="Images/kiwi.jpg" height="50" width="100" alt="Kiwi" /> </a> </li>
       <li> <a onclick="gotoQuantity(this)">
         <h1>Lamb </h1>
-        <img src="Images/lamb_meat.jpg" height="50" width="100" alt="Meat" /> </a> </li>
+        <img src="Images/lamb.jpg" height="50" width="100" alt="Meat" /> </a> </li>
       <li> <a onclick="gotoQuantity(this)">
         <h1>Macaroni </h1>
-        <img src="Images/mac_pasta.jpg" height="50" width="100" alt="Macaroni" /> </a> </li>
+        <img src="Images/macaroni.jpg" height="50" width="100" alt="Macaroni" /> </a> </li>
       <li> <a onclick="gotoQuantity(this)">
         <h1>Milk</h1>
-        <img src="Images/milk_dairy.jpg" height="50" width="100" alt="Milk" /> </a> </li>
+        <img src="Images/milk.jpg" height="50" width="100" alt="Milk" /> </a> </li>
       <li> <a onclick="gotoQuantity(this)">
-        <h1>Rib Eye </h1>
-        <img src="Images/ribeye_image.jpg" height="50" width="100" alt="Ribeye" /> </a> </li>
+        <h1>Rib-Eye </h1>
+        <img src="Images/rib-eye.jpg" height="50" width="100" alt="Ribeye" /> </a> </li>
       <li> <a onclick="gotoQuantity(this)">
         <h1>Spaghetti </h1>
-        <img src="Images/spaghetti_pasta.jpg" height="50" width="100" alt="Spaghetti" /> </a> </li>
+        <img src="Images/spaghetti.jpg" height="50" width="100" alt="Spaghetti" /> </a> </li>
     </ul>
   </article>
   <footer data-role="footer" data-position="fixed" data-theme="b">
@@ -212,16 +287,16 @@ function showlist()
   </header>
   <div>
   <h2 id="vegname"> </h2>
- </div>
+  <img id="vegimage" />
+  </div>
   
   <div class="ui-field-contain">
     <br>
     <br>
     <input type="text" data-role="spinbox" name="spin" id="spin" value="0" min="0" max="100"/>
-</div>
+  </div>
 
-<button onclick="addtolist()"> Add to list </button>
-
+  <button onclick="addtolist()"> Add to list </button>
   
   <footer data-role="footer" data-position="fixed" data-theme="b">
     <nav data-role="navbar">
@@ -254,6 +329,7 @@ function showlist()
     <h2> Navigate throughout the App </h2>
     <p> This application is very simple to use and you just need to click on either the Home button to go the Main Page or the Shopping List button at the bottom of the screen to view your shopping list! </p>
   </article>
+  
   <footer data-role="footer" data-position="fixed" data-theme="b">
     <nav data-role="navbar">
       <ul>
@@ -271,21 +347,20 @@ function showlist()
     <h1> Shopping List </h1>
   </header>
   
-  <div id="allfoodchosen"> 
-  
-  <article data-role="content">
-  <ul id="finalshoppinglist" data-role="listview" data-filter="true" data-autodividers="true" data-inset="true"> 
-  </ul>
-  </article>
+  <div id="allfoodchosen">   
+      <article data-role="content">
+      <ul id="finalshoppinglist" data-role="listview" data-filter="true" data-autodividers="true" data-inset="true"> 
+      </ul>
+      </article>
   </div>
-  
+      
   <footer data-role="footer" data-position="fixed" data-theme="b">
-    <nav data-role="navbar">
+     <nav data-role="navbar">
       <ul>
         <li><a href="#page1" data-icon="home"> Home </a></li>
         <li><a href="#page3" data-icon="info"> Info</a></li>
       </ul>
-    </nav>
+     </nav>
   </footer>
 </div>
 <!-- end of page 4 -->
